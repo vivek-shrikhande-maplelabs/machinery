@@ -2,9 +2,7 @@ package mongo
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"reflect"
 	"strings"
 	"sync"
 	"time"
@@ -139,34 +137,11 @@ func (b *Backend) SetStateRetry(signature *tasks.Signature) error {
 
 // SetStateSuccess updates task state to SUCCESS
 func (b *Backend) SetStateSuccess(signature *tasks.Signature, results []*tasks.TaskResult) error {
-	decodedResults := b.decodeResults(results)
 	update := bson.M{
 		"state":   tasks.StateSuccess,
-		"results": decodedResults,
+		"results": results,
 	}
 	return b.updateState(signature, update)
-}
-
-// decodeResults detects & decodes json strings in TaskResult.Value and returns a new slice
-func (b *Backend) decodeResults(results []*tasks.TaskResult) []*tasks.TaskResult {
-	l := len(results)
-	jsonResults := make([]*tasks.TaskResult, l)
-	for i, result := range results {
-		jsonResult := new(bson.M)
-		resultType := reflect.TypeOf(result.Value).Kind()
-		if resultType == reflect.String {
-			err := json.NewDecoder(strings.NewReader(result.Value.(string))).Decode(&jsonResult)
-			if err == nil {
-				jsonResults[i] = &tasks.TaskResult{
-					Type:  "json",
-					Value: jsonResult,
-				}
-				continue
-			}
-		}
-		jsonResults[i] = result
-	}
-	return jsonResults
 }
 
 // SetStateFailure updates task state to FAILURE
